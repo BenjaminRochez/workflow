@@ -1,76 +1,97 @@
-var gulp = require('gulp');
-var sass = require('gulp-sass');
-var pug = require('gulp-pug');
-var notify = require('gulp-notify');
-var concat = require('gulp-concat');
-var sourcemaps = require('gulp-sourcemaps');
-var uglify = require('gulp-uglify');
-var pump = require('pump');
-var browserSync = require('browser-sync').create();
+var gulp = require("gulp"),
+    sass = require("gulp-sass"),
+    postcss = require("gulp-postcss"),
+    autoprefixer = require("autoprefixer"),
+    cssnano = require("cssnano"),
+    sourcemaps = require("gulp-sourcemaps"),
+    pug = require('gulp-pug'),
+    browserSync = require("browser-sync").create();
+
+var paths = {
+    styles: {
+        src: "src/scss/*.scss",
+        dest: "src/css"
+    },
+
+    html: {
+        src: 'src/pug/*.pug',
+        dest: 'src/views'
+    }
+};
+
+function html() {
+    return gulp  
+        .src(paths.html.src)
+        .pipe(pug())
+        .pipe(gulp.dest(paths.html.dest))
+}
+
+function style() {
+    return gulp
+        .src(paths.styles.src)
+        // Initialize sourcemaps before compilation starts
+        .pipe(sourcemaps.init())
+        .pipe(sass())
+        .on("error", sass.logError)
+        // Use postcss with autoprefixer and compress the compiled file using cssnano
+        .pipe(postcss([autoprefixer(), cssnano()]))
+        // Now add/write the sourcemaps
+        .pipe(sourcemaps.write())
+        .pipe(gulp.dest(paths.styles.dest))
+        // Add browsersync stream pipe after compilation
+        .pipe(browserSync.stream());
+}
 
 
 
-gulp.task('sass', function () {
-  gulp.src('./sass/**/*.scss')
-    .pipe(sass().on('error', function(err) {
-        notify({
-          title: 'Wow a css bug'
-        }).write(err.line + ': ' + err.message);
-        return this.emit('end');
-    }))
-    .pipe(gulp.dest('./'))
-    .pipe(browserSync.stream());
-});
 
+// A simple task to reload the page
+function reload() {
+    browserSync.reload();
+}
 
-gulp.task('pug', function buildHTML() {
-    return gulp.src([
-        'views/*.pug',
-        'views/**/*.pug'
-    ])
-    .pipe(pug(
-        {
-            pretty: true,
-            basedir: __dirname + '/views'
-        }
-    ).on('error', function(err) {
-        notify({
-            title: 'Wow a pug bug'
-        }).write(err.line + ': ' + err.message);
-        return this.emit('end');
-    }))
-    .pipe(gulp.dest('./'));
-});
-
-
-gulp.task('js', function (cb) {
-    pump([
-            gulp.src(['js/libs/*.js', 'js/*.js']),
-            sourcemaps.init(),
-            concat('app.min.js'),
-            gulp.dest('./'),
-            uglify(),
-            sourcemaps.write(),
-            gulp.dest('./')
-        ],
-        cb
-    );
-});
-
-
-
-gulp.task('browser-sync', function() {
+// Add browsersync initialization at the start of the watch task
+function watch() {
     browserSync.init({
+        // You can tell browserSync to use this directory and serve it as a mini-server
         server: {
-            baseDir: "./"
+            baseDir: "./src"
         }
+        // If you are already serving your website locally using something like apache
+        // You can use the proxy setting to proxy that instead
+        // proxy: "yourlocal.dev"
     });
-    gulp.watch("sass/**/*.scss", ['sass']);
-    gulp.watch("views/**/*.pug", ['pug']);
-    gulp.watch("js/**/*.js", ['js']);
-    gulp.watch("*.js").on('change', browserSync.reload);
-    gulp.watch("*.html").on('change', browserSync.reload);
-});
+    gulp.watch(paths.styles.src, style);
+    gulp.watch(paths.html.src, html);
+    gulp.watch('src/views/*.html').on('change', browserSync.reload)
 
+}
+ 
+// We don't have to expose the reload function
+// It's currently only useful in other functions
 
-gulp.task('default', ['browser-sync', 'pug', 'sass', 'js']);
+    
+// Don't forget to expose the task!
+exports.watch = watch
+
+// Expose the task by exporting it
+// This allows you to run it from the commandline using
+// $ gulp style
+exports.style = style;
+
+exports.html = html;
+
+/*
+ * Specify if tasks run in series or parallel using `gulp.series` and `gulp.parallel`
+ */
+var build = gulp.parallel(html, style, watch);
+ 
+/*
+ * You can still use `gulp.task` to expose tasks
+ */
+//gulp.task('build', build);
+ 
+/*
+ * Define default task that can be called by just running `gulp` from cli
+ */
+gulp.task('default', build);
