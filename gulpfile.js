@@ -55,7 +55,7 @@ function watch() {
     browserSync.init({
         // You can tell browserSync to use this directory and serve it as a mini-server
         server: {
-            baseDir: "./src"
+            baseDir: "./src/views"
         }
         // If you are already serving your website locally using something like apache
         // You can use the proxy setting to proxy that instead
