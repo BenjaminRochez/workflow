@@ -16,6 +16,10 @@ var paths = {
     html: {
         src: 'src/pug/*.pug',
         dest: 'src/views'
+    },
+    js:{
+        src: 'src/js/script.js',
+        dest: 'src/js'
     }
 };
 
@@ -41,8 +45,6 @@ function style() {
         // Add browsersync stream pipe after compilation
         .pipe(browserSync.stream());
 }
-
-
 
 
 // A simple task to reload the page
